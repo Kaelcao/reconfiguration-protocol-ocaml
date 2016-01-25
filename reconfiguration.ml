@@ -8,9 +8,9 @@ type wire = {src:string;dst:string;wire_type:string}
 	all component in failed state will be stored in started_components array
 *)
 let started_components = ref [];;
-let started_components = ref [];;
+let failed_components = ref [];;
 let stopped_components = ref [];;
-let wires = ref [];
+let wires = ref [];;
 
 (* 
 ---------helper functions--------- 
@@ -21,10 +21,22 @@ put all helper functions in here
 let rec remove e l = 
 	match l with
 	| [] -> []
-	| h::t -> if h=e then t else h::remove e t;;
+	| h::t -> if (h=e) then t else h::(remove e t);;
 
+let rec print_list l =
+	match l with
+	 | [] -> ()
+	 | e::l -> print_string e; print_string " "; print_list l;;
 
 (* ---------end helper function--------- *)
+
+(*
+	get state of all component
+*)
+let state = 
+	print_string "Started: "; print_list !started_components;
+	print_string "Started: "; print_list !started_components;
+	print_string "Started: "; print_list !started_components;;
 
 
 (* --------- Reconfiguration Operations --------- *)
@@ -33,6 +45,8 @@ let rec remove e l =
 	Add component to stopped_components list
 *)
 let construct component = (stopped_components := (!stopped_components@[component]));;
+
+
 
 (*
 	Destruct a component
@@ -45,7 +59,10 @@ let destruct component = (stopped_components := (remove component !stopped_compo
 	Remove component from the stopped state
 	Then add it to the started array to move change it to started state
 *)
-let start component = component;;
+let start component = 
+		(started_components := (!started_components@[component]));
+	    (stopped_components := (remove component !stopped_components));;
+
 
 (*
 	Stop a component
