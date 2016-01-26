@@ -1,6 +1,12 @@
-
+(* Declare type that will be use to model the architecture and the wire *)
 type wire = {src:string;dst:string;wire_type:string}
-
+type architecture = 
+	{
+		start:string list ref;
+		stop:string list ref;
+		fail:string list ref;
+		wires:wire list ref
+	}
 (*
 	Assume every component will be present by a string
 	all component in stated state will be stored in started_components array
@@ -21,7 +27,13 @@ let w3 = {src="c";dst="c1";wire_type=mandatory_state};;
 
 let wires = ref [w1;w2;w3];;
 
-
+let current_architecture = 
+						{
+							start=started_components;
+							stop=stopped_components;
+							fail=failed_components;
+							wires=wires
+						};;
 (* 
 ---------helper functions--------- ssss
 put all helper functions in here
@@ -156,5 +168,10 @@ let destructed c =
 
 
 (* --------- End Propagation Rules --------- *)
+
+(* --------- Begin Propagation Protocol --------- *)
+
+
+(* --------- End Propagation Protocol --------- *)
 
 
