@@ -207,8 +207,21 @@ let destructed c =
 (* --------- End Propagation Rules --------- *)
 
 (* --------- Begin Propagation Protocol --------- *)
+(*
+	define constant name for each operation
+*)
+let unwired_operation = "unwired";;
+let stopped_operation = "stopped";;
+let destructed_operation = "destructed";;
+
 let wire_operation_list = ref [];;
 let wire_input_list = ref [];;
+
+let stop_operation_list = ref [];;
+let stop_input_list = ref [];;
+
+let destruct_operation_list = ref [];;
+let destruct_input_list = ref [];;
 
 (*
 	return true if the wire element exist in the wires list
@@ -218,25 +231,71 @@ let rec exist_wire element wires =
 	match wires with
 	|[]->false
 	|h::t->if compare_wire h element then true else exist_wire element t;;
+
 (*
-	return true if the element i
+	return true if the element exists in the the list
 *)
+let rec exist_in_list element l =
+	match l with
+	|[]->false
+	|h::t-> if (element=h) then true else exist_in_list element t;;
 
 (*
 	Get the list of Apply Down Set for unwired operation
+	ac_wire_list: the wire list of current architecture
+	ad_wire_list: the wire list of destination architecture
 *)
 let rec diff_down_wire_list ac_wire_list ad_wire_list = 
 	match ac_wire_list with
 	|[] -> ()
 	|h::t-> if (not (exist_wire h ad_wire_list)) then 
-			(wire_operation_list := !wire_operation_list@["unwired"];
+			(wire_operation_list := !wire_operation_list@[unwired_operation];
 			wire_input_list := !wire_input_list@[h];
-			print_string "unwired ";print_wire h)
+			print_string unwired_operation;print_string " ";print_wire h)
 			else diff_down_wire_list t ad_wire_list;;
 
 (*
 	Get the list of Apply Down Set for Stopped element
+	ac_start_list: the started_elements list of current architecture
+	ad_stop_list: the stopped_elements list of destination architecture
 *)
+let rec diff_down_stop_list ac_start_list ad_stop_list = 
+	match ac_start_list with
+	|[]->()
+	|h::t->if (exist_in_list h ad_stop_list) then
+				(stop_operation_list:= !stop_operation_list@[stopped_operation];
+				stop_input_list := !stop_input_list@[h];
+				print_string stopped_operation;print_string " ";print_string h)
+			else diff_down_stop_list t ad_stop_list;;
+
+(*
+	Get the list of Apply Down Set for Destructed element
+	ac_stop_list: the stopped_elements list of current architecture
+	ad_stop_list: the stopped_elements list of destination architecture
+*)
+let rec diff_down_destruct_list ac_stop_list ad_stop_list =
+	match ac_stop_list with
+	|[]->()
+	|h::t->if (not (exist_in_list h ad_stop_list)) then
+			(destruct_operation_list:= !destruct_operation_list@[destructed_operation];
+				destruct_input_list := !destruct_input_list@[h];
+				print_string destructed_operation;print_string " ";print_string h)
+			else diff_down_destruct_list t ad_stop_list;;
+
+(*
+	Get the full Apply Down Set for all unwires, Stopped and Destructed element
+	ac: current architecture
+	ad: destination architecture
+*)
+let diff_down ac ad = 
+	print_string "get the unwired operation.\n";
+	diff_down_wire_list !(ac.wires) !(ad.wires);
+	print_string "\nget the stopped operation.\n";
+	diff_down_stop_list !(ac.start) !(ad.stop);
+	print_string "\nget the destructed operation.\n";
+	diff_down_destruct_list !(ac.stop) !(ad.stop);;
+
+	
 
 
 (* --------- End Propagation Protocol --------- *)
