@@ -214,13 +214,10 @@ let unwired_operation = "unwired";;
 let stopped_operation = "stopped";;
 let destructed_operation = "destructed";;
 
-let wire_operation_list = ref [];;
 let wire_input_list = ref [];;
 
-let stop_operation_list = ref [];;
 let stop_input_list = ref [];;
 
-let destruct_operation_list = ref [];;
 let destruct_input_list = ref [];;
 
 (*
@@ -249,8 +246,7 @@ let rec diff_down_wire_list ac_wire_list ad_wire_list =
 	match ac_wire_list with
 	|[] -> ()
 	|h::t-> if (not (exist_wire h ad_wire_list)) then 
-			(wire_operation_list := !wire_operation_list@[unwired_operation];
-			wire_input_list := !wire_input_list@[h];
+			(wire_input_list := !wire_input_list@[h];
 			print_string unwired_operation;print_string " ";print_wire h)
 			else diff_down_wire_list t ad_wire_list;;
 
@@ -263,8 +259,7 @@ let rec diff_down_stop_list ac_start_list ad_stop_list =
 	match ac_start_list with
 	|[]->()
 	|h::t->if (exist_in_list h ad_stop_list) then
-				(stop_operation_list:= !stop_operation_list@[stopped_operation];
-				stop_input_list := !stop_input_list@[h];
+				(stop_input_list := !stop_input_list@[h];
 				print_string stopped_operation;print_string " ";print_string h)
 			else diff_down_stop_list t ad_stop_list;;
 
@@ -277,11 +272,24 @@ let rec diff_down_destruct_list ac_stop_list ad_stop_list =
 	match ac_stop_list with
 	|[]->()
 	|h::t->if (not (exist_in_list h ad_stop_list)) then
-			(destruct_operation_list:= !destruct_operation_list@[destructed_operation];
-				destruct_input_list := !destruct_input_list@[h];
+			(destruct_input_list := !destruct_input_list@[h];
 				print_string destructed_operation;print_string " ";print_string h)
 			else diff_down_destruct_list t ad_stop_list;;
+(*
+	run all the unwire operation in the list
+*)
+let rec run_unwired_operation wire_list =
+	match wire_list with
+	|[]->()
+	|h::t -> unwired h;run_unwired_operation t;;
 
+(*
+	run all the others operation except unwire in the list
+*)
+let rec run_other_operation f l = 
+	match l with
+	|[]->()
+	|h::t -> f h;run_other_operation f t;;
 (*
 	Get the full Apply Down Set for all unwires, Stopped and Destructed element
 	ac: current architecture
@@ -289,11 +297,22 @@ let rec diff_down_destruct_list ac_stop_list ad_stop_list =
 *)
 let diff_down ac ad = 
 	print_string "get the unwired operation.\n";
+	(* Get the unwire list operations *)
 	diff_down_wire_list !(ac.wires) !(ad.wires);
+	(* Run all the unwire operations *)
+	run_unwired_operation !wire_input_list;
+
 	print_string "\nget the stopped operation.\n";
+	(* Get the stop list operations *)
 	diff_down_stop_list !(ac.start) !(ad.stop);
+	(* Run all the stop operations *)
+	run_other_operation stopped !stop_input_list;
+
 	print_string "\nget the destructed operation.\n";
-	diff_down_destruct_list !(ac.stop) !(ad.stop);;
+	(* Get the stop list operations *)
+	diff_down_destruct_list !(ac.stop) !(ad.stop);
+	(* Run all the destruct operations *)
+	run_other_operation destructed !destruct_input_list;;
 
 	
 
