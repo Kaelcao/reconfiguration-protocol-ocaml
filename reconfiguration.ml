@@ -14,19 +14,22 @@ type architecture =
 	all component in failed state will be stored in started_components array
 *)
 
+(* define the wire state as constant *)
 let mandatory_state = "mandatory";;
 let optional_state = "optional";;
 
+(* the array of components by state *)
 let started_components = ref ["d";"c";"c1";"c2"];;
 let failed_components = ref [];;
 let stopped_components = ref [];;
 
+(* Create all the wires *)
 let w1 =  {src="d";dst="c";wire_type=mandatory_state};;
 let w2 = {src="c1";dst="c";wire_type=optional_state};;
 let w3 = {src="c";dst="c1";wire_type=mandatory_state};;
-
 let wires = ref [w1;w2;w3];;
 
+(* Define the current architecture *)
 let current_architecture = 
 						{
 							start=started_components;
@@ -34,6 +37,24 @@ let current_architecture =
 							fail=failed_components;
 							wires=wires
 						};;
+
+(* The destination architecture *)
+let started_components_dst = ref ["d";"c";"c1";"c2"];;
+let failed_components_dst = ref [];;
+let stopped_components_dst = ref [];;
+let w1_dst = {src="d";dst="c";wire_type=mandatory_state};;
+let w2_dst = {src="c1";dst="c";wire_type=optional_state};;
+let w3_dst = {src="c";dst="c2";wire_type=mandatory_state};;
+let wires_dst = ref [w1_dst;w2_dst;w3_dst];;
+
+let destination_architecture = 
+							{
+								start=started_components_dst;
+								stop=stopped_components_dst;
+								fail=failed_components_dst;
+								wires=wires_dst	
+							}
+
 (* 
 ---------helper functions--------- ssss
 put all helper functions in here
@@ -45,10 +66,15 @@ let rec remove e l =
 	| [] -> []
 	| h::t -> if (h=e) then t else h::(remove e t);;
 
+(*
+	compare 2 wires whether they the same
+*)
+let compare_wire ele1 ele2 = (ele1.src = ele2.src && ele1.dst=ele2.dst && ele1.wire_type=ele2.wire_type);;
+
 let rec remove_wire wire wire_list = 
 	match wire_list with
 	|[]->[]
-	|h::t -> if (h.src = wire.src && h.dst=wire.dst && h.wire_type=wire.wire_type) then t 
+	|h::t -> if (compare_wire h wire) then t 
 			else h::remove_wire wire t;;
 
 let rec print_list l =
@@ -57,13 +83,13 @@ let rec print_list l =
 	 | e::l -> print_string e; print_string ";"; print_list l;;
 
 let print_wire w = 
-	print_string "{src: ";
+	print_string "{src=\"";
 	print_string w.src;
-	print_string " dst: ";
+	print_string "\";dst=\"";
 	print_string w.dst;
-	print_string " type: ";
+	print_string "\";wire_type=\"";
 	print_string w.wire_type;
-	print_string "}";;
+	print_string "\"}";;
 
 let rec print_wire_list l =
 	match l with
@@ -88,7 +114,8 @@ let show_wire = print_wire_list !wires;;
 	Construct a component 
 	Add component to stopped_components list
 *)
-let construct component = (stopped_components := (!stopped_components@[component]));;
+let construct component = (print_string "Construct: ";print_string component ;
+						print_string "\n"; stopped_components := (!stopped_components@[component]));;
 
 (*
 	Start a component
@@ -96,6 +123,7 @@ let construct component = (stopped_components := (!stopped_components@[component
 	Then add it to the started array to move change it to started state
 *)
 let start component = 
+		print_string "Start: ";print_string component;print_string "\n";
 		(started_components := (!started_components@[component]));
 	    (stopped_components := (remove component !stopped_components));;
 
@@ -106,6 +134,7 @@ let start component =
 	Then add it to the stopped array to move change it to stopped state
 *)
 let stop component = 
+	print_string "Stop: ";print_string component;print_string "\n";
 	(stopped_components := (!stopped_components@[component]));
 	(started_components := (remove component !started_components));;
 
@@ -113,20 +142,28 @@ let stop component =
 	Destruct a component
 	Remove component from the stopped_components list
 *)
-let destruct component = stop component;(stopped_components := (remove component !stopped_components));;
+let destruct component = 
+	stop component;
+	print_string "Destruct: ";print_string component;print_string "\n";
+	(stopped_components := (remove component !stopped_components));;
 
 (*
 	Create a wire between 2 component 
 	Create wire with its state
 	Then add it to the wires array 
 *)
-let wire com_src com_dst wire_state = (wires := (!wires@[{src=com_src;dst=com_dst;wire_type=wire_state}]));;
+let wire com_src com_dst wire_state = 
+	print_string "Wire: ";print_wire {src=com_src;dst=com_dst;wire_type=wire_state};
+	print_string "\n";
+	(wires := (!wires@[{src=com_src;dst=com_dst;wire_type=wire_state}]));;
 
 (*
 	Remove a wire between 2 component 
 	by remove it from the wires array 
 *)
-let rec unwire wire = (wires := (remove_wire wire !wires));;
+let rec unwire wire = 
+	print_string "unwire: ";print_wire wire;print_string "\n";
+	(wires := (remove_wire wire !wires));;
 
 (* --------- End Reconfiguration Operations --------- *)
 
@@ -170,6 +207,36 @@ let destructed c =
 (* --------- End Propagation Rules --------- *)
 
 (* --------- Begin Propagation Protocol --------- *)
+let wire_operation_list = ref [];;
+let wire_input_list = ref [];;
+
+(*
+	return true if the wire element exist in the wires list
+	else return false
+*)
+let rec exist_wire element wires = 
+	match wires with
+	|[]->false
+	|h::t->if compare_wire h element then true else exist_wire element t;;
+(*
+	return true if the element i
+*)
+
+(*
+	Get the list of Apply Down Set for unwired operation
+*)
+let rec diff_down_wire_list ac_wire_list ad_wire_list = 
+	match ac_wire_list with
+	|[] -> ()
+	|h::t-> if (not (exist_wire h ad_wire_list)) then 
+			(wire_operation_list := !wire_operation_list@["unwired"];
+			wire_input_list := !wire_input_list@[h];
+			print_string "unwired ";print_wire h)
+			else diff_down_wire_list t ad_wire_list;;
+
+(*
+	Get the list of Apply Down Set for Stopped element
+*)
 
 
 (* --------- End Propagation Protocol --------- *)
