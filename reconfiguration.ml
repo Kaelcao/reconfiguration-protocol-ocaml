@@ -290,12 +290,33 @@ let rec run_other_operation f l =
 	match l with
 	|[]->()
 	|h::t -> f h;run_other_operation f t;;
+
+(* 
+	Check whether the architecture is consistent or not
+ *)
+
+(* All started components are wired to started *)
+let rec mandatory_wire_stated architecture wire_list= 
+	match wire_list with
+	|[]->true
+	|x::t->(List.mem x.dst !(architecture.start)) && mandatory_wire_stated architecture t;;
+
+(*There is no wire from/to destructed or failed component*)
+let rec no_wire_from_failed_destructed architecture wire_list = 
+	match wire_list with
+	|[]->true
+	|x::t-> ((List.mem x.dst !(architecture.start)) || (List.mem x.dst !(architecture.stop)))
+			&& ((List.mem x.src !(architecture.start)) || (List.mem x.src !(architecture.stop)))
+			&& no_wire_from_failed_destructed architecture t;;
+
+let consistent architecture = 
+	mandatory_wire_stated current_architecture !(current_architecture.wires);;
+
 (*
-	Get the full Apply Down Set for all unwires, Stopped and Destructed element
-	ac: current architecture
-	ad: destination architecture
+	the full diff_down function
+	
 *)
-let diff_down ac ad = 
+let diff_down_full ac ad = 
 	print_string "get the unwired operation.\n";
 	(* Get the unwire list operations *)
 	diff_down_wire_list !(ac.wires) !(ad.wires);
@@ -314,7 +335,14 @@ let diff_down ac ad =
 	(* Run all the destruct operations *)
 	run_other_operation destructed !destruct_input_list;;
 
-	
+
+(*
+	Get the full Apply Down Set for all unwires, Stopped and Destructed element
+	ac: current architecture
+	ad: destination architecture
+*)
+let commit ac ad = 
+	diff_down_full ac ad;;
 
 
 (* --------- End Propagation Protocol --------- *)
